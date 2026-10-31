@@ -1,0 +1,95 @@
+[project]
+name = "pusula"
+version = "0.1.0"
+description = "Directional systematic equity & options trading platform: point-in-time data, causal alphas, factor risk model, cost-aware optimizer, one code path from research to paper trading."
+requires-python = ">=3.12"
+license = { text = "All rights reserved" }
+authors = [{ name = "Kagan Elifoglu" }]
+dependencies = [
+    "clarabel>=0.11.1",
+    "cvxpy>=1.9.3",
+    "fastapi>=0.162.0",
+    "httpx>=0.28.1",
+    "lxml>=6.1.3",
+    "numpy>=2.5.4",
+    "pandas>=3.1.0",
+    "pyarrow>=26.0.0",
+    "pywebview>=5 ; sys_platform == 'win32'",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+    "uvicorn>=0.54.0",
+    "websockets>=17.3",
+]
+
+[project.scripts]
+pusula = "pusula.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.170.8",
+    "mypy>=2.4.0",
+    "pandas-stubs>=3.0.5.260914",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.17.2",
+    "scipy-stubs>=1.18.1.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF", "BLE", "PT", "NPY", "PERF", "C4", "RET", "PL"]
+ignore = [
+    "PLR0913",  # numerical kernels legitimately take many parameters
+    "PLR2004",  # magic numbers are domain constants in finance code; named where it matters
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "N803",     # matrix names (X, B, F) follow the maths
+    "N806",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "PLC0415",  # deliberate lazy imports (CLI start-up time, optional heavy deps)
+    "PLR0917",  # numerical kernels take positional arrays
+    "N812",     # `import sharpe as S` mirrors the maths
+    "C408",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "N802", "PT018"]
+"src/pusula/research/families.py" = ["E501"]  # hypothesis prose; part of the registered config
+"src/pusula/research/report.py" = ["E501"]  # markdown templates
+"src/pusula/research/mm_study.py" = ["E501"]  # hypothesis prose, markdown templates
+"src/pusula/research/optquote_study.py" = ["E501"]  # hypothesis prose
+"tools/*.py" = ["E501"]  # markdown table rows
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_return_any = false  # numpy/pandas return Any pervasively; every other strict flag stays on
+mypy_path = "src"
+packages = ["pusula"]
+
+[[tool.mypy.overrides]]
+module = ["cvxpy", "cvxpy.*", "sklearn", "sklearn.*", "pyarrow.*", "clarabel.*", "uvicorn.*", "webview", "webview.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: long-running statistical calibration tests",
+    "network: needs internet access (skipped unless PUSULA_NETWORK=1)",
+]
+filterwarnings = ["error::RuntimeWarning:pusula.*"]

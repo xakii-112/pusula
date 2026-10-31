@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pusula</title>
+<style>
+:root {
+  --bg:#0b0e13; --panel:#12161d; --panel2:#181d26; --ink:#e4e7ee; --mute:#8791a5; --line:#232935;
+  --pos:#3fb68b; --neg:#ef5f57; --acc:#f0b429; --warn:#e3a008;
+  --mono:"Cascadia Mono","Cascadia Code",Consolas,"Courier New",monospace;
+}
+* { box-sizing:border-box; }
+html, body { height:100%; }
+body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.45 "Segoe UI",system-ui,sans-serif; overflow:hidden; }
+#app { display:grid; height:100vh; grid-template:44px 1fr 24px / 168px 1fr; grid-template-areas:"top top" "nav main" "foot foot"; }
+#top { grid-area:top; display:flex; align-items:center; gap:14px; padding:0 14px; background:var(--panel); border-bottom:1px solid var(--line); min-width:0; }
+#top .brand { font-weight:600; letter-spacing:.14em; color:var(--acc); font-size:13px; text-transform:uppercase; }
+#top .sp { flex:1; }
+#top .fact { color:var(--mute); font-size:12px; white-space:nowrap; }
+#top .fact b { color:var(--ink); font-weight:500; font-family:var(--mono); }
+select, button.act { background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:4px; padding:4px 8px; font:inherit; }
+button.act { cursor:pointer; color:var(--mute); }
+button.act:hover { color:var(--ink); border-color:var(--mute); }
+select:focus-visible, button:focus-visible, tr[tabindex]:focus-visible { outline:2px solid var(--acc); outline-offset:-2px; }
+#nav { grid-area:nav; background:var(--panel); border-right:1px solid var(--line); padding:8px 0; display:flex; flex-direction:column; }
+#nav button { display:flex; justify-content:space-between; align-items:center; width:100%; background:none; border:0; border-left:2px solid transparent; color:var(--mute); text-align:left; padding:8px 12px; font:inherit; cursor:pointer; }
+#nav button:hover { color:var(--ink); background:var(--panel2); }
+#nav button[aria-current="page"] { color:var(--ink); border-left-color:var(--acc); background:var(--panel2); }
+#nav kbd { font:11px var(--mono); color:var(--mute); }
+#nav .help { margin-top:auto; padding:10px 12px; color:var(--mute); font-size:11px; line-height:1.7; border-top:1px solid var(--line); }
+#nav .help kbd { color:var(--ink); }
+#main { grid-area:main; overflow:auto; padding:12px; min-width:0; }
+#foot { grid-area:foot; display:flex; gap:16px; align-items:center; padding:0 12px; background:var(--panel); border-top:1px solid var(--line); color:var(--mute); font-size:11px; white-space:nowrap; overflow:hidden; }
+#foot .sp { flex:1; }
+.view { display:none; gap:12px; }
+.view.on { display:grid; }
+section { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:10px 12px; overflow-x:auto; min-width:0; }
+h2 { font-size:11px; font-weight:600; margin:0 0 8px; color:var(--mute); text-transform:uppercase; letter-spacing:.08em; }
+p.note { color:var(--mute); margin:0 0 8px; font-size:12px; }
+table { border-collapse:collapse; width:100%; }
+th, td { padding:3px 8px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+td { font:12px var(--mono); }
+th:first-child, td:first-child { text-align:left; }
+td.txt, th.txt { text-align:left; font-family:inherit; white-space:normal; }
+th { color:var(--mute); font-weight:500; font-size:11px; position:sticky; top:0; background:var(--panel); }
+tr[tabindex] { cursor:pointer; }
+tr[tabindex]:hover td { background:var(--panel2); }
+tr.sel td { background:var(--panel2); }
+tr.sel td:first-child { box-shadow:inset 2px 0 0 var(--acc); }
+.pos { color:var(--pos); } .neg { color:var(--neg); } .mute { color:var(--mute); } .warn { color:var(--warn); }
+.tag { display:inline-block; padding:0 6px; border-radius:3px; font:11px var(--mono); border:1px solid var(--line); color:var(--mute); }
+.tag.ok { color:var(--pos); border-color:var(--pos); } .tag.bad { color:var(--neg); border-color:var(--neg); } .tag.warn { color:var(--warn); border-color:var(--warn); }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+.tile { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:10px 12px; }
+.tile .k { color:var(--mute); font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+.tile .v { font:22px var(--mono); margin-top:2px; }
+.tile .s { color:var(--mute); font-size:12px; margin-top:2px; }
+.grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:12px; }
+.empty { color:var(--mute); padding:6px 0; }
+.swatch { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:7px; }
+#curveBox { position:relative; height:240px; }
+#curve { width:100%; height:100%; display:block; }
+#curve text { fill:var(--mute); font:11px var(--mono); }
+.banner { background:rgba(239,95,87,.12); border:1px solid var(--neg); color:var(--neg); border-radius:4px; padding:6px 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <span class="brand">Pusula</span>
+    <label class="fact" for="famSel">Aile</label>
+    <select id="famSel"></select>
+    <span class="fact">Son seans <b id="asOf">...</b></span>
+    <span class="sp"></span>
+    <span id="healthPill"></span>
+    <span id="ledgerPill"></span>
+    <button class="act" id="refresh" title="Yenile (R)">Yenile</button>
+  </header>
+  <nav id="nav" aria-label="Görünümler">
+    <button data-view="overview"><span>Özet</span><kbd>1</kbd></button>
+    <button data-view="research"><span>Araştırma</span><kbd>2</kbd></button>
+    <button data-view="books"><span>İleri kasalar</span><kbd>3</kbd></button>
+    <button data-view="review"><span>İleri sicil</span><kbd>4</kbd></button>
+    <button data-view="health"><span>Sistem</span><kbd>5</kbd></button>
+    <div class="help"><kbd>[</kbd> <kbd>]</kbd> aile değiştir<br><kbd>↑</kbd> <kbd>↓</kbd> kasa seç<br><kbd>R</kbd> yenile</div>
+  </nav>
+  <main id="main">
+    <div id="rehearsal" class="banner" hidden>PROVA: kasalar geçmiş bir tarihten yeniden oynatıldı. Bu bir gösterimdir, ileri sicil değildir.</div>
+    <div class="view" id="view-overview">
+      <div class="tiles" id="tiles"></div>
+      <section><h2>Araştırma aileleri ve ileri kasalar</h2><div id="families" class="empty">yükleniyor</div></section>
+      <section id="alertsBox" hidden><h2>Açık uyarılar</h2><div id="alerts"></div></section>
+    </div>
+    <div class="view" id="view-research">
+      <section><h2>Ön-kayıtlı denemeler</h2><div id="results" class="empty">sonuç yok</div></section>
+    </div>
+    <div class="view" id="view-books">
+      <section><h2>Sermaye eğrileri (başlangıca göre)</h2><div id="curveBox"><svg id="curve" role="img" aria-label="Kasaların sermaye eğrileri"></svg></div></section>
+      <section><h2>Kasalar</h2><div id="booksTable" class="empty">ileri kayıt henüz yok</div></section>
+      <div class="grid2">
+        <section><h2>Pozisyonlar: <span id="bookName" style="text-transform:none"></span></h2><div id="positions" class="empty"></div></section>
+        <section><h2>Risk ve stres</h2><div id="risk" class="empty"></div></section>
+      </div>
+      <section><h2>Son seansın işlemleri ve nedenleri</h2><div id="trades" class="empty"></div></section>
+    </div>
+    <div class="view" id="view-review">
+      <section><h2>İleri sicil, kapıya karşı</h2><div id="review" class="empty">ileri inceleme henüz yok</div></section>
+      <section id="signalsBox" hidden><h2>Sinyaller tek başına</h2><div id="signals"></div></section>
+    </div>
+    <div class="view" id="view-health">
+      <section><h2>Sistem sağlığı</h2><div id="health" class="empty">sağlık raporu henüz yok</div></section>
+      <section><h2>Veri</h2><div id="data" class="empty">ileri kayıt henüz yok</div></section>
+      <section><h2>Araştırma defteri</h2><div id="ledger" class="empty"></div></section>
+      <section><h2>Broker hesabı</h2><div id="execution" class="empty">Hiçbir kasa bir hesaba bağlı değil: pusula execute</div></section>
+    </div>
+  </main>
+  <footer id="foot">
+    <span>Salt okunur: bu pencere emir göndermez, kasalara dokunmaz</span>
+    <span class="sp"></span>
+    <span id="status"></span>
+  </footer>
+</div>
+<script>
+const DEFAULT_FAMILY = "us-equity-v2";
+const COLORS = ["#6aa9ff","#3fb68b","#ef5f57","#f0b429","#a371f7","#56d4dd","#ff8bd0","#9da7b3","#f0883e","#7ee787"];
+const POLL_MS = 60000;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = (x, d=2) => Number(x).toLocaleString("tr-TR", {minimumFractionDigits:d, maximumFractionDigits:d});
+const num = (x, d=2) => x == null ? "n/a" : fmt(x, d);
+const pct = (x, d=1) => x == null ? "n/a" : (x < 0 ? "-%" : "%") + fmt(Math.abs(100*x), d);
+const money = x => x == null ? "n/a" : fmt(x, 0);
+const cls = x => x == null ? "" : (x >= 0 ? "pos" : "neg");
+const empty = text => `<div class="empty">${esc(text)}</div>`;
+const STATUS = {insufficient:"yetersiz", benchmark:"kıyas", passes:"geçti"};
+
+const state = { view:"overview", family:null, snapshot:null, book:null, stamp:null };
+
+/* A 404 means "not produced yet", which is a normal state; anything else is reported. */
+async function get(url) {
+  const r = await fetch(url);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(url + ": HTTP " + r.status);
+  return r.json();
+}
+
+function say(text, bad=false) { const s = $("status"); s.textContent = text; s.className = bad ? "neg" : ""; }
+
+function showView(name) {
+  state.view = name;
+  for (const v of document.querySelectorAll(".view")) v.classList.toggle("on", v.id === "view-" + name);
+  for (const b of document.querySelectorAll("#nav button")) {
+    if (b.dataset.view === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  }
+  $("main").scrollTop = 0;
+  if (name === "books") drawCurve();
+}
+
+function renderTop(ov, health) {
+  if (health) {
+    const crit = health.alerts.filter(a => a.severity === "critical").length;
+    const warn = health.alerts.length - crit;
+    $("healthPill").innerHTML = health.healthy
+      ? `<span class="tag ${warn ? "warn" : "ok"}" title="Son kontrol ${esc(health.checked_at.slice(0,16))}">${warn ? warn + " uyarı" : "sağlıklı"}</span>`
+      : `<span class="tag bad">${crit} kritik</span>`;
+  } else $("healthPill").innerHTML = '<span class="tag">sağlık raporu yok</span>';
+  $("ledgerPill").innerHTML = ov.ledger_ok ? '<span class="tag ok">defter doğrulandı</span>' : '<span class="tag bad">defter bozuk</span>';
+  $("ledger").innerHTML = ov.ledger_ok
+    ? `<p class="note">Zincir doğrulandı. ${ov.trials} ön-kayıtlı deneme, ${ov.promoted} terfi.</p><table><tr><td>Zincir başı</td><td>${esc(ov.ledger_head)}</td></tr></table>`
+    : `<div class="neg">${esc(ov.ledger_head)}</div>`;
+}
+
+function renderOverview(ov, health) {
+  const fwd = ov.families.map(f => f.forward).filter(Boolean);
+  const books = fwd.reduce((n, f) => n + f.books, 0);
+  const traded = fwd.reduce((n, f) => n + f.traded, 0);
+  const halted = fwd.reduce((n, f) => n + f.halted, 0);
+  const last = fwd.map(f => f.as_of).sort().pop();
+  $("asOf").textContent = last || "yok";
+  const alerts = health ? health.alerts : [];
+  const crit = alerts.filter(a => a.severity === "critical").length;
+  const tile = (k, v, s, c="") => `<div class="tile"><div class="k">${esc(k)}</div><div class="v ${c}">${esc(v)}</div><div class="s">${esc(s)}</div></div>`;
+  $("tiles").innerHTML =
+    tile("Terfi eden", `${ov.promoted} / ${ov.trials}`, "ön-kayıtlı deneme", ov.promoted ? "pos" : "") +
+    tile("İleri kasa", books, `${traded} işlem yaptı, ${halted} durduruldu`, halted ? "neg" : "") +
+    tile("Son seans", last || "yok", health ? `beklenen ${health.expected_session}` : "sağlık raporu yok") +
+    tile("Açık uyarı", alerts.length, `${crit} kritik`, crit ? "neg" : (alerts.length ? "warn" : "pos"));
+  let h = `<table><tr><th>aile</th><th>deneme</th><th>terfi</th><th>en iyi deneme</th><th>holdout Sharpe</th><th>kıyas Sharpe</th><th>kasa</th><th>son seans</th><th>günün en iyisi</th><th>günün en kötüsü</th></tr>`;
+  for (const f of ov.families) {
+    const w = f.forward;
+    const move = m => m ? `<span class="${cls(m.move)}">${pct(m.move, 2)}</span> <span class="mute">${esc(m.book)}</span>` : '<span class="mute">n/a</span>';
+    h += `<tr tabindex="0" data-family="${esc(f.family)}"><td>${esc(f.family)}</td><td>${f.candidates}</td><td>${f.promoted}</td><td>${f.best ? esc(f.best.name) : "n/a"}</td><td class="${cls(f.best && f.best.sharpe)}">${num(f.best && f.best.sharpe)}</td><td>${num(f.benchmark && f.benchmark.sharpe)}</td><td>${w ? w.books : "-"}</td><td>${w ? esc(w.as_of) : "-"}</td><td>${w ? move(w.best) : ""}</td><td>${w ? move(w.worst) : ""}</td></tr>`;
+  }
+  $("families").innerHTML = h + "</table>";
+  for (const tr of $("families").querySelectorAll("tr[data-family]")) {
+    const open = () => { setFamily(tr.dataset.family); showView("research"); };
+    tr.onclick = open;
+    tr.onkeydown = e => { if (e.key === "Enter") open(); };
+  }
+  $("alertsBox").hidden = !alerts.length;
+  $("alerts").innerHTML = alertTable(alerts);
+}
+
+function alertTable(alerts) {
+  let h = "<table>";
+  for (const a of alerts) h += `<tr><td style="width:70px"><span class="tag ${a.severity === "critical" ? "bad" : "warn"}">${a.severity === "critical" ? "kritik" : "uyarı"}</span></td><td class="txt">${esc(a.message)}</td></tr>`;
+  return h + "</table>";
+}
+
+function renderHealth(health) {
+  if (!health) { $("health").innerHTML = empty("sağlık raporu henüz yok: pusula health"); return; }
+  let h = `<p class="note">${health.healthy ? '<span class="tag ok">sağlıklı</span>' : '<span class="tag bad">sorunlu</span>'} Son kontrol ${esc(health.checked_at.slice(0,16))}, beklenen seans ${esc(health.expected_session)}.</p>`;
+  h += "<table><tr><th>aile</th><th>son kayıt</th></tr>";
+  for (const [fam, asOf] of Object.entries(health.families)) h += `<tr><td>${esc(fam)}</td><td>${asOf ? esc(asOf) : '<span class="neg">kayıt yok</span>'}</td></tr>`;
+  h += "</table>";
+  if (health.alerts.length) h += '<p class="note" style="margin-top:10px">Uyarılar</p>' + alertTable(health.alerts);
+  $("health").innerHTML = h;
+}
+
+function renderResults(d) {
+  if (!d || !d.results.length) { $("results").innerHTML = empty("bu aile için sonuç yok"); return; }
+  let h = `<p class="note">Bu ailede ${d.trials} deneme. Deflated Sharpe, <code>${esc(d.programme)}</code> programının ${d.programme_trials} denemesinin tamamını sayar. Sharpe, t ve DSR fazla getiri üzerinden; maliyet sonrası.</p><table><tr><th>deneme</th><th>geliştirme Sharpe</th><th>holdout Sharpe</th><th>getiri</th><th>oynaklık</th><th>maks. düşüş</th><th>NW t</th><th>FF alfa</th><th>alfa t</th><th>DSR</th><th class="txt">karar</th></tr>`;
+  for (const r of d.results) {
+    const o = r.holdout, v = r.verdict, dev = r.dev || {}, fac = r.factor || {};
+    const tag = v.benchmark ? '<span class="tag">kıyas</span>'
+      : (v.promoted ? '<span class="tag ok">terfi</span>' : `<span class="tag bad">reddedildi</span> <span class="mute">${esc((v.failed||[]).join(", "))}</span>`);
+    h += `<tr><td>${esc(r.name)}</td><td class="${cls(dev.sharpe)}">${num(dev.sharpe)}</td><td class="${cls(o.sharpe)}">${num(o.sharpe)}</td><td class="${cls(o.ann_return)}">${pct(o.ann_return)}</td><td>${pct(o.ann_vol)}</td><td>${pct(o.max_drawdown)}</td><td>${num(o.t_nw)}</td><td class="${cls(fac.alpha_annual)}">${pct(fac.alpha_annual)}</td><td>${num(fac.alpha_t)}</td><td>${num(r.dsr)}</td><td class="txt">${tag}</td></tr>`;
+  }
+  $("results").innerHTML = h + "</table>";
+}
+
+function bookNames() { return state.snapshot ? Object.keys(state.snapshot.books) : []; }
+
+function renderBooks() {
+  const d = state.snapshot;
+  $("rehearsal").hidden = !(d && d.rehearsal);
+  const names = bookNames();
+  if (!names.length) {
+    const why = d ? "kasalar kayıttan sonraki ilk seansta açılır" : "bu ailenin ileri kaydı yok";
+    $("booksTable").innerHTML = empty(why);
+    for (const id of ["positions", "risk", "trades"]) $(id).innerHTML = "";
+    $("bookName").textContent = "";
+    $("data").innerHTML = d ? dataTable(d) : empty("ileri kayıt henüz yok");
+    drawCurve();
+    return;
+  }
+  if (!names.includes(state.book)) state.book = names[0];
+  let h = `<table><tr><th>kasa</th><th>sermaye</th><th>getiri</th><th>brüt</th><th>net</th><th>isim</th><th>öngörülen oyn.</th><th>beta</th><th>VaR99</th><th class="txt">durum</th></tr>`;
+  names.forEach((k, i) => {
+    const x = d.books[k], c = x.equity_curve, ret = c.length ? x.equity / c[0][1] - 1 : 0, r = x.risk || {};
+    h += `<tr tabindex="0" data-book="${esc(k)}"${k === state.book ? ' class="sel"' : ""}><td><span class="swatch" style="background:${COLORS[i % COLORS.length]}"></span>${esc(k)}</td><td>${money(x.equity)}</td><td class="${cls(ret)}">${pct(ret,2)}</td><td>${num(x.gross)}</td><td>${num(x.net)}</td><td>${x.n_positions}</td><td>${pct(r.ex_ante_vol)}</td><td>${num(r.beta)}</td><td>${pct(r.var99,2)}</td><td class="txt">${x.halted ? '<span class="tag bad">durduruldu</span>' : '<span class="tag ok">çalışıyor</span>'}</td></tr>`;
+  });
+  $("booksTable").innerHTML = h + "</table>";
+  for (const tr of $("booksTable").querySelectorAll("tr[data-book]")) {
+    const pick = () => selectBook(tr.dataset.book);
+    tr.onclick = pick;
+    tr.onkeydown = e => { if (e.key === "Enter") pick(); };
+  }
+  $("data").innerHTML = dataTable(d);
+  renderBookDetail();
+  drawCurve();
+}
+
+function dataTable(d) {
+  return `<table><tr><td>Kalite</td><td class="txt">${esc(d.data.quality)}</td></tr><tr><td>Özet</td><td class="txt">${esc(d.data.digest.slice(0,16))}</td></tr></table>`;
+}
+
+function selectBook(name) {
+  state.book = name;
+  for (const tr of $("booksTable").querySelectorAll("tr[data-book]")) tr.classList.toggle("sel", tr.dataset.book === name);
+  renderBookDetail();
+  drawCurve();
+}
+
+function renderBookDetail() {
+  const x = state.snapshot.books[state.book];
+  $("bookName").textContent = state.book;
+  const rows = x.top_positions || [];
+  let p = `<table><tr><th>menkul</th><th class="txt">sektör</th><th>ağırlık</th></tr>`;
+  for (const r of rows) p += `<tr><td>${esc(r.security)}</td><td class="txt">${esc(r.sector)}</td><td class="${cls(r.weight)}">${pct(r.weight,2)}</td></tr>`;
+  $("positions").innerHTML = rows.length ? p + "</table>" : empty("pozisyon yok");
+  const r = x.risk || {};
+  let s = `<table><tr><td>Öngörülen oynaklık (yıllık)</td><td>${pct(r.ex_ante_vol)}</td></tr><tr><td>Evrene göre beta</td><td>${num(r.beta)}</td></tr><tr><td>1 günlük VaR 95 / 99</td><td>${pct(r.var95,2)} / ${pct(r.var99,2)}</td></tr><tr><td>ES 97,5</td><td>${pct(r.es975,2)}</td></tr><tr><td>Parametrik VaR 99</td><td>${pct(r.parametric_var99,2)}</td></tr>`;
+  for (const st of x.stress || []) s += `<tr><td>${esc(st.scenario)}</td><td class="${cls(st.pnl)}">${pct(st.pnl,2)}</td></tr>`;
+  $("risk").innerHTML = s + "</table>";
+  const t = x.last_trades;
+  if (!t || !t.trades.length) { $("trades").innerHTML = empty("son seansta işlem yok"); return; }
+  let q = `<p class="note">${esc(t.session)}: ${t.n_trades} işlem, ${money(t.traded)} hacim, ${money(t.fees)} ücret. Yüzdelik: karar kapanışında evren üyeleri arasındaki sıra.</p><table><tr><th>menkul</th><th>adet</th><th>tutar</th><th class="txt">neden</th></tr>`;
+  for (const r of t.trades) {
+    const why = Object.entries(r.why).map(([k, v]) => `${esc(k)} ${v == null ? "n/a" : "p" + (100*v).toFixed(0)}`).join(", ") || "yeniden dengeleme";
+    q += `<tr><td>${esc(r.security)}</td><td class="${cls(r.qty)}">${fmt(r.qty,0)}</td><td class="${cls(r.notional)}">${money(r.notional)}</td><td class="txt mute">${why}</td></tr>`;
+  }
+  $("trades").innerHTML = q + "</table>";
+}
+
+function drawCurve() {
+  const svg = $("curve");
+  const w = svg.clientWidth, H = svg.clientHeight;
+  if (!w || !H) return;  // the view is hidden; showView draws it
+  svg.setAttribute("viewBox", `0 0 ${w} ${H}`);
+  const note = t => { svg.innerHTML = `<text x="8" y="20">${esc(t)}</text>`; };
+  const names = bookNames();
+  if (!names.length) return note("henüz eğri yok");
+  const curves = names.map(k => state.snapshot.books[k].equity_curve);
+  const n = Math.max(...curves.map(c => c.length));
+  if (n < 2) return note(`${n} seans`);
+  let lo = 0, hi = 0;
+  for (const c of curves) for (const [, v] of c) { const r = v / c[0][1] - 1; lo = Math.min(lo, r); hi = Math.max(hi, r); }
+  const pad = (hi - lo) * 0.08 || 0.005; lo -= pad; hi += pad;
+  const L = 58, R = 10, T = 8, B = 20;
+  const X = i => L + i / (n - 1) * (w - L - R);
+  const Y = r => T + (hi - r) / (hi - lo) * (H - T - B);
+  let s = "";
+  for (const r of [lo + pad, 0, hi - pad]) {
+    s += `<line x1="${L}" x2="${w - R}" y1="${Y(r)}" y2="${Y(r)}" stroke="var(--line)"${r === 0 ? ' stroke-width="1.5"' : ""}/><text x="${L - 6}" y="${Y(r) + 4}" text-anchor="end">${esc(pct(r, 2))}</text>`;
+  }
+  const longest = curves.find(c => c.length === n);
+  s += `<text x="${L}" y="${H - 5}">${esc(longest[0][0])}</text><text x="${w - R}" y="${H - 5}" text-anchor="end">${esc(longest[n - 1][0])}</text>`;
+  names.forEach((k, i) => {
+    const c = curves[i];
+    if (c.length < 2) return;
+    const on = k === state.book;
+    const pts = c.map(([, v], x) => `${X(x + n - c.length).toFixed(1)},${Y(v / c[0][1] - 1).toFixed(1)}`).join(" ");
+    s += `<polyline fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${on ? 2.4 : 1.2}" opacity="${on ? 1 : 0.55}" points="${pts}"><title>${esc(k)}</title></polyline>`;
+  });
+  svg.innerHTML = s;
+}
+
+function renderReview(d) {
+  if (!d) {
+    $("review").innerHTML = empty("ileri inceleme henüz yok: pusula review");
+    $("signalsBox").hidden = true;
+    return;
+  }
+  let h = `<p class="note">Karar için ${d.min_sessions} seans gerekir; deflated Sharpe ${d.programme_trials} denemeyi sayar.${d.stress_run ? "" : " Gecikme ve maliyet stresleri koşmadı, bu yüzden geçmiş sayılmaz."}</p><table><tr><th>kasa</th><th>seans</th><th>gereken</th><th>Sharpe</th><th>NW t</th><th>maks. düşüş</th><th>holdout Sharpe</th><th>eşit ağırlığa göre (%95)</th><th class="txt">durum</th></tr>`;
+  for (const [k, b] of Object.entries(d.books)) {
+    const m = b.record || {}, v = b.vs_benchmark;
+    const st = b.status === "fails" ? "geçmedi: " + b.verdict.failed.join(", ") : (STATUS[b.status] || b.status);
+    h += `<tr><td>${esc(k)}</td><td>${b.n}</td><td>${num(b.sessions_needed, 0)}</td><td class="${cls(m.sharpe)}">${num(m.sharpe)}</td><td>${num(m.t_nw)}</td><td>${pct(m.max_drawdown)}</td><td>${num(b.holdout_sharpe)}</td><td>${v ? `${num(v.diff)} [${num(v.lo)}, ${num(v.hi)}]` : ""}</td><td class="txt">${esc(st)}</td></tr>`;
+  }
+  $("review").innerHTML = h + "</table>";
+  const rows = d.signals || [];
+  $("signalsBox").hidden = !rows.length;
+  let s = `<p class="note">Sıra IC'si; maliyet ve optimizasyon yok, kapı girdisi değil. Yalnız vadesi dolmuş etiketler sayılır. Bu ölçü karara kısayol değildir.</p><table><tr><th>sinyal</th><th>ufuk</th><th>holdout IC</th><th>holdout t</th><th>vadesi dolan</th><th>ileri IC</th><th>ileri t</th><th>t = 2 için seans</th></tr>`;
+  for (const r of rows) {
+    if (r.unavailable) { s += `<tr><td>${esc(r.signal)}</td><td>${r.horizon}</td><td colspan="6" class="mute">veri yok</td></tr>`; continue; }
+    s += `<tr><td>${esc(r.signal)}</td><td>${r.horizon}</td><td class="${cls(r.holdout_ic)}">${num(r.holdout_ic,3)}</td><td>${num(r.holdout_t)}</td><td>${r.forward_n}</td><td class="${cls(r.forward_ic)}">${num(r.forward_ic,3)}</td><td>${num(r.forward_t)}</td><td>${num(r.sessions_needed,0)}</td></tr>`;
+  }
+  $("signals").innerHTML = s + "</table>";
+}
+
+function renderExecution(d) {
+  const rows = Object.entries((d && d.accounts) || {});
+  if (!rows.length) { $("execution").innerHTML = empty("Hiçbir kasa bir hesaba bağlı değil: pusula execute"); return; }
+  let h = '<table><tr><th>hesap</th><th class="txt">kasa</th><th>son seans</th><th>emir</th><th>reddedilen</th><th>sonraki brüt</th><th>tutulabilen</th><th>hesap</th><th>kasa karışımı</th><th>fark</th></tr>';
+  for (const [mode, a] of rows) {
+    const tag = mode === "live" ? '<span class="tag bad">CANLI</span>' : '<span class="tag">paper</span>';
+    h += `<tr><td>${tag}</td><td class="txt">${esc(a.owner)}</td><td>${esc(a.last_session)}</td><td>${a.orders ?? "n/a"}</td><td class="${a.rejected ? "neg" : ""}">${a.rejected ?? "n/a"}</td><td>${num(a.gross_after)}</td><td>${pct(a.captured)}</td><td class="${cls(a.tracking && a.tracking.account)}">${pct(a.tracking && a.tracking.account, 2)}</td><td class="${cls(a.tracking && a.tracking.mix)}">${pct(a.tracking && a.tracking.mix, 2)}</td><td class="${cls(a.tracking && a.tracking.gap)}">${pct(a.tracking && a.tracking.gap, 2)}</td></tr>`;
+  }
+  $("execution").innerHTML = h + "</table>";
+}
+
+async function loadFamily(f) {
+  const [results, snapshot, review] = await Promise.all([get(`/api/results/${f}`), get(`/api/forward/${f}`), get(`/api/review/${f}`)]);
+  if (f !== state.family) return;  // another family was chosen while these were on their way
+  state.snapshot = snapshot;
+  renderResults(results);
+  renderBooks();
+  renderReview(review);
+}
+
+function setFamily(f) {
+  state.family = f;
+  $("famSel").value = f;
+  state.book = null;
+  loadFamily(f).catch(e => say(e.message, true));
+}
+
+async function refresh() {
+  const [ov, health, execution] = await Promise.all([get("/api/overview"), get("/api/health"), get("/api/execution")]);
+  state.stamp = ov.stamp;
+  const sel = $("famSel");
+  const fams = ov.families.map(f => f.family);
+  if (sel.options.length !== fams.length) sel.innerHTML = fams.map(f => `<option>${esc(f)}</option>`).join("");
+  renderTop(ov, health);
+  renderOverview(ov, health);
+  renderHealth(health);
+  renderExecution(execution);
+  if (!state.family) state.family = fams.includes(DEFAULT_FAMILY) ? DEFAULT_FAMILY : fams[0];
+  sel.value = state.family;
+  if (state.family) await loadFamily(state.family);
+  say("Güncellendi " + new Date().toLocaleTimeString("tr-TR"));
+}
+
+/* The nightly run rewrites the files; the open window follows without being asked. */
+async function poll() {
+  try {
+    const ov = await get("/api/overview");
+    if (ov.stamp !== state.stamp) await refresh();
+  } catch (e) { say(e.message, true); }
+}
+
+function moveFamily(step) {
+  const sel = $("famSel"), i = sel.selectedIndex + step;
+  if (i >= 0 && i < sel.options.length) setFamily(sel.options[i].value);
+}
+
+function moveBook(step) {
+  const names = bookNames(), i = names.indexOf(state.book) + step;
+  if (i >= 0 && i < names.length) selectBook(names[i]);
+}
+
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.altKey || e.metaKey || e.target.tagName === "SELECT") return;
+  const views = ["overview", "research", "books", "review", "health"];
+  if (e.key >= "1" && e.key <= "5") showView(views[Number(e.key) - 1]);
+  else if (e.key === "[") moveFamily(-1);
+  else if (e.key === "]") moveFamily(1);
+  else if (e.key === "r" || e.key === "R") refresh().catch(err => say(err.message, true));
+  else if (state.view === "books" && e.key === "ArrowDown") { e.preventDefault(); moveBook(1); }
+  else if (state.view === "books" && e.key === "ArrowUp") { e.preventDefault(); moveBook(-1); }
+});
+for (const b of document.querySelectorAll("#nav button")) b.onclick = () => showView(b.dataset.view);
+$("famSel").onchange = e => setFamily(e.target.value);
+$("refresh").onclick = () => refresh().catch(err => say(err.message, true));
+new ResizeObserver(drawCurve).observe($("curve"));
+showView("overview");
+refresh().catch(e => say(e.message, true));
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
